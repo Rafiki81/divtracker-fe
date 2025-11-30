@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "370863807972",
+    "project_id": "divtracker-445bd",
+    "storage_bucket": "divtracker-445bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370863807972:android:61ce78aca029b7d61fbbf1",
+        "android_client_info": {
+          "package_name": "com.rafiki81.divtracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxupjSwNL6g7zjmE8KiT7WnG_oSzWutfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

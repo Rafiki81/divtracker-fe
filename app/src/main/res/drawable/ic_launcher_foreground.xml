@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Grupo centrado (Safe zone es 66dp en el centro) -->
+    <group android:translateX="24" android:translateY="24">
+        
+        <!-- Barra 1 -->
+        <path
+            android:fillColor="#334155"
+            android:pathData="M10,45 h10 v15 h-10 z" />
+            
+        <!-- Barra 2 -->
+        <path
+            android:fillColor="#475569"
+            android:pathData="M25,35 h10 v25 h-10 z" />
+            
+        <!-- Barra 3 -->
+        <path
+            android:fillColor="#64748B"
+            android:pathData="M40,25 h10 v35 h-10 z" />
+            
+        <!-- Línea de Tendencia (Flecha) -->
+        <path
+            android:fillColor="#4ADE80"
+            android:pathData="M10,35 L25,25 L40,15 L55,5 L55,15 L40,25 L25,35 L10,45 Z" />
+            
+        <!-- Símbolo de Moneda/Dividendo -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M45,10 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+            
+    </group>
+</vector>

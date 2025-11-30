@@ -1,0 +1,612 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "DivTracker API",
+    "description": "Backend para cÃƒÂ¡lculo de precio de acciones por Free Cash Flow\n\n### CaracterÃ­sticas principales:\n- ðŸ“Š **AnÃ¡lisis de valoraciÃ³n**: CÃ¡lculo de precio justo usando P/FCF objetivo\n- ðŸ’° **DCF (Discounted Cash Flow)**: ValoraciÃ³n intrÃ­nseca con flujos descontados\n- ðŸ“ˆ **TIR (Tasa Interna de Retorno)**: Rentabilidad esperada de la inversiÃ³n\n- ðŸŽ¯ **FCF Yield**: Rendimiento del Free Cash Flow\n- ðŸ›¡ï¸ **Margen de seguridad**: Diferencia entre precio actual y valor intrÃ­nseco\n- â±ï¸ **Payback Period**: Tiempo estimado de recuperaciÃ³n de la inversiÃ³n\n- ðŸ“Š **ROI estimado**: Retorno esperado segÃºn el horizonte de inversiÃ³n\n- ðŸ”” **Alertas de precio**: Notificaciones cuando el precio alcanza objetivos",
+    "contact": {
+      "name": "Rafael Perez Beato",
+      "email": "rafiki18@example.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Servidor de Desarrollo"
+    },
+    {
+      "url": "https://api.divtracker.com",
+      "description": "Servidor de ProducciÃ³n"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "AutenticaciÃ³n",
+      "description": "Endpoints para registro y autenticaciÃ³n de usuarios"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Endpoints para recibir notificaciones externas"
+    },
+    {
+      "name": "Actuator",
+      "description": "Monitor and interact",
+      "externalDocs": {
+        "description": "Spring Boot Actuator Web API Documentation",
+        "url": "https://docs.spring.io/spring-boot/docs/current/actuator-api/html/"
+      }
+    },
+    {
+      "name": "Watchlist",
+      "description": "GestiÃ³n del radar de empresas vigiladas"
+    },
+    {
+      "name": "Testing",
+      "description": "Endpoints de prueba para verificar autenticaciÃ³n"
+    }
+  ],
+  "paths": {
+    "/api/webhooks/finnhub": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Webhook de Finnhub para actualizaciones de precios",
+        "description": "Endpoint pÃºblico para recibir notificaciones de trades en tiempo real desde Finnhub. Finnhub envÃ­a eventos de tipo 'trade' con los Ãºltimos precios de las acciones suscritas. Requiere el header X-Finnhub-Secret para autenticaciÃ³n. Los precios recibidos se guardan en la tabla market_price_ticks para histÃ³rico y anÃ¡lisis.",
+        "operationId": "handleWebhook",
+        "parameters": [
+          {
+            "name": "X-Finnhub-Secret",
+            "in": "header",
+            "description": "Secret de autenticaciÃ³n de Finnhub (configurado en su dashboard)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "d4gubhhr01qgvvc57cf0"
+          }
+        ],
+        "requestBody": {
+          "description": "Payload del webhook de Finnhub con eventos de trades",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              },
+              "examples": {
+                "Trade Event": {
+                  "description": "Trade Event",
+                  "value": {
+                    "event": "trade",
+                    "data": [
+                      {
+                        "s": "AAPL",
+                        "p": 172.15,
+                        "t": 1732285432000,
+                        "v": 1000
+                      },
+                      {
+                        "s": "MSFT",
+                        "p": 378.5,
+                        "t": 1732285433000,
+                        "v": 500
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Secret invÃ¡lido o ausente",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "500": {
+            "description": "Error procesando el webhook",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "200": {
+            "description": "Webhook procesado exitosamente",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchlist": {
+      "get": {
+        "tags": [
+          "Watchlist"
+        ],
+        "summary": "Listar items del watchlist",
+        "description": "Obtiene una lista paginada de todas las empresas en el watchlist del usuario autenticado. Incluye precios actualizados y todas las mÃ©tricas de valoraciÃ³n calculadas (DCF, TIR, FCF Yield, etc.).",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "NÃºmero de pÃ¡gina (0-indexed)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "TamaÃ±o de pÃ¡gina",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Campo de ordenamiento",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "DirecciÃ³n de ordenamiento",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Watchlist"
+        ],
+        "summary": "Crear item en el watchlist",
+        "description": "AÃ±ade una nueva empresa al watchlist del usuario autenticado. Calcula automÃ¡ticamente mÃ©tricas de valoraciÃ³n como DCF, TIR, FCF Yield, margen de seguridad, payback period y ROI estimado. Los parÃ¡metros de valoraciÃ³n (growthRate, horizon, discountRate) son opcionales y se usan para cÃ¡lculos avanzados.",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Item creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistItemResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "Datos invÃ¡lidos",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "409": {
+            "description": "El ticker ya existe en el watchlist",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "tags": [
+          "AutenticaciÃ³n"
+        ],
+        "summary": "Registrar nuevo usuario",
+        "description": "Crea una nueva cuenta de usuario con email y contraseÃ±a",
+        "operationId": "signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario registrado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de registro invÃ¡lidos o email ya existe",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "AutenticaciÃ³n"
+        ],
+        "summary": "Iniciar sesiÃ³n",
+        "description": "Autentica un usuario existente y devuelve un token JWT",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Credenciales invÃ¡lidas",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "200": {
+            "description": "AutenticaciÃ³n exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchlist/{id}": {
+      "get": {
+        "tags": [
+          "Watchlist"
+        ],
+        "summary": "Obtener un item del watchlist",
+        "description": "Obtiene los detalles completos de un item especÃ­fico del watchlist, incluyendo precio actual, mÃ©tricas de valoraciÃ³n (DCF, TIR, margen de seguridad, etc.) y parÃ¡metros de anÃ¡lisis configurados.",
+        "operationId": "getById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistItemResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item no encontrado",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "No autenticado",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Watchlist"
+        ],
+        "summary": "Eliminar item del watchlist",
+        "description": "Elimina un item del watchlist del usuario autenticado",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Item no encontrado",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "204": {
+            "description": "Item eliminado exitosamente"
+          },
+          "401": {
+            "description": "No autenticado",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Watchlist"
+        ],
+        "summary": "Actualizar item del watchlist",
+        "description": "Actualiza parcialmente un item existente en el watchlist (PATCH/merge). Recalcula automÃ¡ticamente todas las mÃ©tricas de valoraciÃ³n cuando se actualizan los parÃ¡metros de entrada (targetPrice, targetPfcf, growthRate, horizon, discountRate).",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del item",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Item no encontrado",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "409": {
+            "description": "El nuevo ticker ya existe en el watchlist",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "200": {
+            "description": "Item actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistItemResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/test/public": {
+      "get": {
+        "tags": [
+          "Testing"
+        ],
+        "summary": "Endpoint pÃºblico",
+        "description": "Endpoint accesible sin autenticaciÃ³n para verificar que la API estÃ¡ funcionando",
+        "operationId": "publicEndpoint",
+        "responses": {
+          "200": {
+            "description": "Respuesta exitosa",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/test/protected": {
+      "get": {
+        "tags": [
+          "Testing"
+        ],
+        "summary": "Endpoint protegido",
+        "description": "Endpoint que requiere autenticaciÃ³n JWT para verificar que el sistema de seguridad funciona",
+        "operationId": "protectedEndpoint",
+        "responses": {
+          "401": {
+            "description": "No autorizado - Token JWT invÃ¡lido o ausente",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "200": {
+            "description": "Acceso autorizado",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/actuator": {
+      "get": {
+        "tags": [
+          "Actuator"
+        ],
+        "summary": "Actuator root web endpoint",
+        "operationId": "links",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.spring-boot.actuator.v3+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/Link"
+                    }
+                  }
+                }
+              },
+              "application/vnd.spring-boot.actuator.v2+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/Link"
+                    }
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/Link"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actuator/info": {
+      "get": {
+        "tags": [
+          "Actuator"
+        ],
+        "summary": "Actuator web endpoint 'info'",
+        "operationId": "info",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.spring-boot.actuator.v3+json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
