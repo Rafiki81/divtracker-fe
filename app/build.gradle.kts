@@ -54,6 +54,9 @@ dependencies {
     // Extended icons
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Fragment (requerido para ActivityResult APIs)
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.5")
 

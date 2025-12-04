@@ -163,7 +163,7 @@ fun WatchlistDetailScreen(
                                     
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = item.currentPrice?.let { "$$it" } ?: "N/A",
+                                            text = formatPrice(item.currentPrice),
                                             style = MaterialTheme.typography.headlineMedium,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -202,7 +202,7 @@ fun WatchlistDetailScreen(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("Dividend Yield", style = MaterialTheme.typography.labelMedium)
                                     Text(
-                                        text = item.dividendYield?.let { "${it}%" } ?: "N/A",
+                                        text = formatPercent(item.dividendYield),
                                         style = MaterialTheme.typography.headlineSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
@@ -215,9 +215,11 @@ fun WatchlistDetailScreen(
                                 )
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("Payout (FCF)", style = MaterialTheme.typography.labelMedium)
-                                    val payout = item.payoutRatioFcf?.let { "${it.multiply(BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)}%" }
+                                    val payout = item.payoutRatioFcf?.let {
+                                        "${it.multiply(BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)}%"
+                                    } ?: "N/A"
                                     Text(
-                                        text = payout ?: "N/A",
+                                        text = payout,
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -227,13 +229,13 @@ fun WatchlistDetailScreen(
                         
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                item.dividendGrowthRate5Y?.let { MetricRow("Div Growth (5Y)", "${it}%") }
-                                MetricRow("Coverage Ratio", item.dividendCoverageRatio?.toString())
+                                item.dividendGrowthRate5Y?.let { MetricRow("Div Growth (5Y)", formatPercent(it)) }
+                                MetricRow("Coverage Ratio", formatNumber(item.dividendCoverageRatio))
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("Chowder Rule", item.chowderRuleValue?.let { "$it" })
-                                item.focfCagr5Y?.let { MetricRow("FCF Growth (5Y)", "${it}%") }
+                                MetricRow("Chowder Rule", formatNumber(item.chowderRuleValue))
+                                item.focfCagr5Y?.let { MetricRow("FCF Growth (5Y)", formatPercent(it)) }
                             }
                         }
 
@@ -250,7 +252,7 @@ fun WatchlistDetailScreen(
                         ) {
                             Text("Margin of Safety", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                text = item.marginOfSafety?.let { "${it}%" } ?: "N/A",
+                                text = formatPercent(item.marginOfSafety),
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = marginColor,
                                 fontWeight = FontWeight.Bold
@@ -259,15 +261,15 @@ fun WatchlistDetailScreen(
                         
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("DCF Fair Value", item.dcfFairValue?.let { "$$it" }, highlight = true)
-                                MetricRow("FCF Yield", item.fcfYield?.let { "${it}%" })
-                                MetricRow("P/E Ratio", item.peAnnual?.toString())
+                                MetricRow("DCF Fair Value", formatPrice(item.dcfFairValue), highlight = true)
+                                MetricRow("FCF Yield", formatPercent(item.fcfYield))
+                                MetricRow("P/E Ratio", formatNumber(item.peAnnual, 2))
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("Fair Price (P/FCF)", item.fairPriceByPfcf?.let { "$$it" })
-                                MetricRow("Discount to Fair", item.discountToFairPrice?.let { "${it}%" })
-                                MetricRow("P/FCF (Actual)", item.actualPfcf?.toString())
+                                MetricRow("Fair Price (P/FCF)", formatPrice(item.fairPriceByPfcf))
+                                MetricRow("Discount to Fair", formatPercent(item.discountToFairPrice))
+                                MetricRow("P/FCF (Actual)", formatNumber(item.actualPfcf, 2))
                             }
                         }
 
@@ -278,12 +280,12 @@ fun WatchlistDetailScreen(
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
                                 MetricRow("Market Cap", formatMarketCap(item.marketCapitalization))
-                                MetricRow("Beta", item.beta?.toString())
+                                MetricRow("Beta", formatNumber(item.beta, 2))
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("52W High", item.weekHigh52?.let { "$$it" })
-                                MetricRow("52W Low", item.weekLow52?.let { "$$it" })
+                                MetricRow("52W High", formatPrice(item.weekHigh52))
+                                MetricRow("52W Low", formatPrice(item.weekLow52))
                             }
                         }
                         
@@ -308,7 +310,7 @@ fun WatchlistDetailScreen(
                             Column {
                                 Text("Target Price", style = MaterialTheme.typography.bodySmall)
                                 Text(
-                                    text = item.targetPrice?.let { "$$it" } ?: "Not Set",
+                                    text = item.targetPrice?.let { formatPrice(it) } ?: "Not Set",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -316,7 +318,7 @@ fun WatchlistDetailScreen(
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Target P/FCF", style = MaterialTheme.typography.bodySmall)
                                 Text(
-                                    text = item.targetPfcf?.toString() ?: "N/A",
+                                    text = item.targetPfcf?.let { formatNumber(it, 2) } ?: "N/A",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -385,15 +387,60 @@ fun MetricRow(label: String, value: String?, highlight: Boolean = false) {
     }
 }
 
+/**
+ * Formatea el Market Cap.
+ * NOTA: Si el valor viene de Finnhub, normalmente está en millones.
+ * Ejemplo: 342822.15 millones = $342.82B
+ */
 fun formatMarketCap(value: BigDecimal?): String {
     if (value == null) return "N/A"
+
+    val absValue = value.abs()
+
+    // Asumimos que el valor viene en millones (común en APIs financieras)
+    // Si es >= 1,000,000 (millones), entonces es en trillones
+    // Si es >= 1,000 (millones), entonces es en billones
+    // Si es < 1,000, es en millones
+
     return when {
-        value >= BigDecimal("1000000000000") -> 
-            "$${(value.divide(BigDecimal("1000000000000"), 2, RoundingMode.HALF_UP))}T"
-        value >= BigDecimal("1000000000") -> 
-            "$${(value.divide(BigDecimal("1000000000"), 2, RoundingMode.HALF_UP))}B"
-        value >= BigDecimal("1000000") -> 
-            "$${(value.divide(BigDecimal("1000000"), 2, RoundingMode.HALF_UP))}M"
-        else -> "$${value}"
+        // >= 1,000,000 millones = Trillones
+        absValue >= BigDecimal("1000000") -> {
+            val formatted = value.divide(BigDecimal("1000000"), 2, RoundingMode.HALF_UP)
+            "$${formatted}T"
+        }
+        // >= 1,000 millones = Billones (ej: 342822 millones = 342.82B)
+        absValue >= BigDecimal("1000") -> {
+            val formatted = value.divide(BigDecimal("1000"), 2, RoundingMode.HALF_UP)
+            "$${formatted}B"
+        }
+        // < 1,000 = Millones
+        else -> {
+            "$${value.setScale(2, RoundingMode.HALF_UP)}M"
+        }
     }
 }
+
+/**
+ * Formatea un precio/valor monetario con 2 decimales máximo
+ */
+fun formatPrice(value: BigDecimal?): String {
+    if (value == null) return "N/A"
+    return "$${value.setScale(2, RoundingMode.HALF_UP)}"
+}
+
+/**
+ * Formatea un número decimal con precisión limitada (4 decimales máx)
+ */
+fun formatNumber(value: BigDecimal?, decimals: Int = 2): String {
+    if (value == null) return "N/A"
+    return value.setScale(decimals, RoundingMode.HALF_UP).toString()
+}
+
+/**
+ * Formatea un porcentaje con 2 decimales
+ */
+fun formatPercent(value: BigDecimal?): String {
+    if (value == null) return "N/A"
+    return "${value.setScale(2, RoundingMode.HALF_UP)}%"
+}
+
