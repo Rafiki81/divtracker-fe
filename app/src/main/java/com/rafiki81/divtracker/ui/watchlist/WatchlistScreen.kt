@@ -31,6 +31,7 @@ import com.rafiki81.divtracker.data.repository.FcmTokenRepository
 import com.rafiki81.divtracker.util.ColorUtils
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -394,19 +395,19 @@ fun WatchlistItemCard(
             ) {
                 MetricItem(
                     label = "Div Yield", 
-                    value = item.dividendYield?.let { "${it}%" } ?: "N/A",
+                    value = item.dividendYield?.let { "${it.setScale(2, RoundingMode.HALF_UP)}%" } ?: "N/A",
                     valueColor = MaterialTheme.colorScheme.onSurface
                 )
                 
                 MetricItem(
                     label = "Margin", 
-                    value = item.marginOfSafety?.let { "${it}%" } ?: "N/A",
+                    value = item.marginOfSafety?.let { "${it.setScale(2, RoundingMode.HALF_UP)}%" } ?: "N/A",
                     valueColor = if (item.marginOfSafety != null) marginColor else MaterialTheme.colorScheme.onSurface
                 )
                 
                 MetricItem(
                     label = "FCF Yield", 
-                    value = item.fcfYield?.let { "${it}%" } ?: "N/A",
+                    value = item.fcfYield?.let { "${it.setScale(2, RoundingMode.HALF_UP)}%" } ?: "N/A",
                     valueColor = if (item.fcfYield != null) yieldColor else MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -478,8 +479,9 @@ fun AnimatedPriceText(
 
     Column(horizontalAlignment = Alignment.End) {
         // Precio principal con animación de escala
+        val formattedPrice = price?.setScale(2, RoundingMode.HALF_UP)
         Text(
-            text = if (price != null) "$${price}" else "N/A",
+            text = if (formattedPrice != null) "$$formattedPrice" else "N/A",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = if (isBelowTarget) targetHitColor else MaterialTheme.colorScheme.onSurface,
@@ -489,8 +491,9 @@ fun AnimatedPriceText(
         // Cambio diario en porcentaje
         if (dailyChangePercent != null) {
             val sign = if (dailyChangePercent >= BigDecimal.ZERO) "+" else ""
+            val formattedChange = dailyChangePercent.setScale(2, RoundingMode.HALF_UP)
             Text(
-                text = "$sign${dailyChangePercent}%",
+                text = "$sign${formattedChange}%",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = changeColor,

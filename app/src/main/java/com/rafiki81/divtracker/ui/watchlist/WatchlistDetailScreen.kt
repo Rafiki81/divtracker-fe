@@ -342,8 +342,10 @@ fun WatchlistDetailScreen(
                         // Extra: Assumptions Footer
                         if (item.estimatedFcfGrowthRate != null) {
                             Spacer(modifier = Modifier.height(16.dp))
+                            val growthFormatted = item.estimatedFcfGrowthRate.multiply(BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)
+                            val discountFormatted = item.discountRate?.multiply(BigDecimal(100))?.setScale(2, RoundingMode.HALF_UP)
                             Text(
-                                text = "Valuation based on ${item.estimatedFcfGrowthRate.multiply(BigDecimal(100))}% growth & ${item.discountRate?.multiply(BigDecimal(100))}% discount rate.",
+                                text = "Valuation based on ${growthFormatted}% growth & ${discountFormatted ?: "N/A"}% discount rate.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray
                             )
