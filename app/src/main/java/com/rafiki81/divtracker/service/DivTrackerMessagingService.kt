@@ -39,16 +39,20 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         
-        Log.d("FCM", "Message received from: ${remoteMessage.from}")
+        Log.d("FCM", "🔔 Message received from: ${remoteMessage.from}")
+        Log.d("FCM", "🔔 Message ID: ${remoteMessage.messageId}")
 
         // Check if message contains a data payload.
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d("FCM", "Message data payload: ${remoteMessage.data}")
+            Log.d("FCM", "📦 Data payload: ${remoteMessage.data}")
             handleDataMessage(remoteMessage.data)
+        } else {
+            Log.d("FCM", "📦 No data payload")
         }
 
         // Check if message contains a notification payload.
         remoteMessage.notification?.let {
+            Log.d("FCM", "📢 Notification: ${it.title} - ${it.body}")
             Log.d("FCM", "Message Notification Body: ${it.body}")
             showNotification(
                 it.title ?: "DivTracker",
@@ -62,6 +66,8 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
         val type = data["type"]
         val title = data["title"]
         val body = data["body"]
+
+        Log.d("FCM", "📨 Processing message type: $type")
 
         when (type) {
             "PRICE_ALERT" -> {
@@ -83,15 +89,30 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
                 // Silent update - Actualizar la base de datos local
                 handlePriceUpdate(data)
             }
+            else -> {
+                // Si no hay type pero hay ticker y price, tratar como actualización de precio
+                val ticker = data["ticker"]
+                val price = data["price"]
+                if (ticker != null && price != null) {
+                    Log.d("FCM", "📨 No type specified, but found ticker=$ticker, price=$price - treating as price update")
+                    handlePriceUpdate(data)
+                }
+            }
         }
     }
 
     private fun handlePriceUpdate(data: Map<String, String>) {
-        val ticker = data["ticker"] ?: return
-        val price = data["price"] ?: return
+        val ticker = data["ticker"] ?: run {
+            Log.w("FCM", "⚠️ No ticker in price update")
+            return
+        }
+        val price = data["price"] ?: run {
+            Log.w("FCM", "⚠️ No price in price update for $ticker")
+            return
+        }
         val changePercent = data["changePercent"]
 
-        Log.d("FCM", "Price update for $ticker: $price (${changePercent ?: "N/A"}%)")
+        Log.d("FCM", "💰 Price update for $ticker: $$price (${changePercent ?: "N/A"}%)")
 
         scope.launch {
             try {
@@ -100,9 +121,9 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
                     currentPrice = price,
                     dailyChangePercent = changePercent
                 )
-                Log.d("FCM", "Successfully updated price for $ticker in local DB")
+                Log.d("FCM", "✅ Successfully updated price for $ticker in local DB")
             } catch (e: Exception) {
-                Log.e("FCM", "Error updating price for $ticker: ${e.message}")
+                Log.e("FCM", "❌ Error updating price for $ticker: ${e.message}", e)
             }
         }
     }

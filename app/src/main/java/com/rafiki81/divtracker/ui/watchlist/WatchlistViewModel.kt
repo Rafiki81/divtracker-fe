@@ -9,10 +9,13 @@ import com.rafiki81.divtracker.data.model.WatchlistPage
 import com.rafiki81.divtracker.data.model.WatchlistItemRequest
 import com.rafiki81.divtracker.data.model.WatchlistItemResponse
 import com.rafiki81.divtracker.data.repository.WatchlistRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.util.UUID
@@ -40,6 +43,14 @@ class WatchlistViewModel(application: Application) : AndroidViewModel(applicatio
 
     // Configuración actual de ordenamiento
     private var currentSortOption = SortOption.MARGIN_DESC
+
+    // Job para auto-refresh
+    private var autoRefreshJob: Job? = null
+
+    // Intervalo de auto-refresh (30 segundos)
+    companion object {
+        private const val AUTO_REFRESH_INTERVAL_MS = 30_000L
+    }
 
     init {
         // Observar cambios en la base de datos local
@@ -175,4 +186,41 @@ class WatchlistViewModel(application: Application) : AndroidViewModel(applicatio
     fun resetListState() { _listState.value = WatchlistListState.Idle }
     fun resetDetailState() { _detailState.value = WatchlistDetailState.Idle }
     fun resetOperationState() { _operationState.value = WatchlistOperationState.Idle }
+
+    /**
+     * Iniciar auto-refresh de precios cada 30 segundos
+     */
+    fun startAutoRefresh() {
+        // Cancelar job anterior si existe
+        autoRefreshJob?.cancel()
+
+        autoRefreshJob = viewModelScope.launch {
+            while (isActive) {
+                delay(AUTO_REFRESH_INTERVAL_MS)
+                refreshSilently()
+            }
+        }
+    }
+
+    /**
+     * Detener auto-refresh (cuando la pantalla no está visible)
+     */
+    fun stopAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = null
+    }
+
+    /**
+     * Refresh silencioso sin mostrar indicador de carga
+     * Usado para actualizaciones automáticas de precios
+     */
+    private suspend fun refreshSilently() {
+        repository.refreshWatchlist(0, 20, "createdAt", "DESC")
+        // No mostramos errores en refresh silencioso para no molestar al usuario
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopAutoRefresh()
+    }
 }

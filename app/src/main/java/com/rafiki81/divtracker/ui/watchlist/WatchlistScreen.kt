@@ -21,8 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rafiki81.divtracker.data.api.RetrofitClient
 import com.rafiki81.divtracker.data.api.TokenManager
@@ -75,6 +78,24 @@ fun WatchlistScreen(
         viewModel.loadWatchlist()
     }
     
+    // Auto-refresh: iniciar cuando la pantalla está visible, detener cuando no
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.startAutoRefresh()
+                Lifecycle.Event.ON_PAUSE -> viewModel.stopAutoRefresh()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.stopAutoRefresh()
+        }
+    }
+
     // When sort option changes, sort in memory (don't reload from API)
     LaunchedEffect(sortOption) {
         viewModel.sortWatchlistInMemory(sortOption)
