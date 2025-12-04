@@ -122,7 +122,20 @@ class WatchlistRepository(
         return if (response.isSuccessful && response.body() != null) {
             Result.success(response.body()!!)
         } else {
-            Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
+            // Intentar extraer el mensaje de error del cuerpo de la respuesta
+            val errorMessage = try {
+                val errorBody = response.errorBody()?.string()
+                if (errorBody != null) {
+                    // El backend devuelve JSON como: {"message":"Ticker 'PG' already exists..."}
+                    val regex = """"message"\s*:\s*"([^"]+)"""".toRegex()
+                    regex.find(errorBody)?.groupValues?.get(1) ?: "Error ${response.code()}: ${response.message()}"
+                } else {
+                    "Error ${response.code()}: ${response.message()}"
+                }
+            } catch (e: Exception) {
+                "Error ${response.code()}: ${response.message()}"
+            }
+            Result.failure(Exception(errorMessage))
         }
     }
 }

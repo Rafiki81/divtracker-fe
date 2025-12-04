@@ -8,6 +8,9 @@ data class WatchlistItemResponse(
     @SerializedName("id")
     val id: UUID,
     
+    @SerializedName("userId")
+    val userId: UUID? = null,
+
     @SerializedName("ticker")
     val ticker: String,
     
@@ -31,6 +34,9 @@ data class WatchlistItemResponse(
     @SerializedName("currentPrice")
     val currentPrice: BigDecimal?,
     
+    @SerializedName("dailyChangePercent")
+    val dailyChangePercent: BigDecimal?,
+
     @SerializedName("marketCapitalization")
     val marketCapitalization: BigDecimal?,
     

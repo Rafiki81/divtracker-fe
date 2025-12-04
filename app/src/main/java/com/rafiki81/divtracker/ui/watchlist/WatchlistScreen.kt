@@ -1,26 +1,35 @@
 package com.rafiki81.divtracker.ui.watchlist
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rafiki81.divtracker.data.api.RetrofitClient
+import com.rafiki81.divtracker.data.api.TokenManager
 import com.rafiki81.divtracker.data.model.WatchlistItemResponse
+import com.rafiki81.divtracker.data.repository.FcmTokenRepository
+import com.rafiki81.divtracker.util.ColorUtils
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,29 +37,35 @@ import java.math.BigDecimal
 fun WatchlistScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCreate: () -> Unit,
+    onLogout: () -> Unit,
     viewModel: WatchlistViewModel = viewModel()
 ) {
     val listState by viewModel.listState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // FCM Token Repository para desregistrar dispositivo en logout
+    val fcmTokenRepository = remember {
+        FcmTokenRepository(RetrofitClient.deviceApiService, context)
+    }
+
     // Sorting state (Default: Margin Descending)
     var sortOption by remember { mutableStateOf(SortOption.MARGIN_DESC) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // Refresh State
-    var isRefreshing by remember { mutableStateOf(false) }
+    // Refresh State from ViewModel
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullToRefreshState = rememberPullToRefreshState()
 
     // Cache items
     var cachedItems by remember { mutableStateOf<List<WatchlistItemResponse>?>(null) }
 
-    // Update cache and stop refreshing
+    // Update cache when list state changes
     LaunchedEffect(listState) {
         if (listState is WatchlistListState.Success) {
             cachedItems = (listState as WatchlistListState.Success).watchlistPage.content
-            isRefreshing = false
-        } else if (listState is WatchlistListState.Error) {
-            isRefreshing = false
         }
     }
 
@@ -81,13 +96,16 @@ fun WatchlistScreen(
                     IconButton(onClick = { showSortMenu = true }) {
                         Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                     }
+                    IconButton(onClick = { showLogoutDialog = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                    }
                     DropdownMenu(
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false }
                     ) {
                         DropdownMenuItem(
                             text = { Text("Most Undervalued (Margin)") },
-                            onClick = { 
+                            onClick = {
                                 sortOption = SortOption.MARGIN_DESC
                                 showSortMenu = false
                             }
@@ -118,18 +136,64 @@ fun WatchlistScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToCreate) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // FAB pequeño para logout
+                SmallFloatingActionButton(
+                    onClick = { showLogoutDialog = true },
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                }
+                // FAB principal para añadir
+                FloatingActionButton(onClick = onNavigateToCreate) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Item")
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         
+        // Logout Confirmation Dialog
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("Cerrar sesión") },
+                text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutDialog = false
+                            coroutineScope.launch {
+                                // 1. Desregistrar dispositivo del backend
+                                fcmTokenRepository.unregisterCurrentDevice()
+                                // 2. Limpiar datos locales FCM
+                                fcmTokenRepository.clearLocalData()
+                                // 3. Limpiar token de autenticación
+                                TokenManager.clearToken()
+                                // 4. Navegar a login
+                                onLogout()
+                            }
+                        }
+                    ) {
+                        Text("Cerrar sesión", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             state = pullToRefreshState,
             onRefresh = {
-                isRefreshing = true
                 viewModel.loadWatchlist() // API reload
             },
             modifier = Modifier
@@ -298,11 +362,12 @@ fun WatchlistItemCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = if (item.currentPrice != null) "$${item.currentPrice}" else "N/A",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isBelowTarget) targetHitColor else MaterialTheme.colorScheme.onSurface
+                    // Precio con animación de pulso cuando cambia
+                    AnimatedPriceText(
+                        price = item.currentPrice,
+                        dailyChangePercent = item.dailyChangePercent,
+                        isBelowTarget = isBelowTarget,
+                        targetHitColor = targetHitColor
                     )
                     if (isBelowTarget) {
                         Text(
@@ -369,3 +434,69 @@ fun MetricItem(
         )
     }
 }
+
+/**
+ * Precio animado con efecto de pulso cuando cambia el valor.
+ * También muestra el cambio diario en porcentaje.
+ */
+@Composable
+fun AnimatedPriceText(
+    price: BigDecimal?,
+    dailyChangePercent: BigDecimal?,
+    isBelowTarget: Boolean,
+    targetHitColor: Color
+) {
+    // Escala animada para el efecto de pulso
+    val scale = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Recordar el precio anterior para detectar cambios
+    var previousPrice by remember { mutableStateOf(price) }
+
+    // Color del cambio diario
+    val changeColor = ColorUtils.getDailyChangeColor(dailyChangePercent)
+
+    // Detectar cambio de precio y animar
+    LaunchedEffect(price) {
+        if (previousPrice != null && price != null && previousPrice != price) {
+            // Precio cambió - ejecutar animación de pulso
+            coroutineScope.launch {
+                // Escalar hacia arriba
+                scale.animateTo(
+                    targetValue = 1.15f,
+                    animationSpec = tween(durationMillis = 150)
+                )
+                // Volver al tamaño normal
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 150)
+                )
+            }
+        }
+        previousPrice = price
+    }
+
+    Column(horizontalAlignment = Alignment.End) {
+        // Precio principal con animación de escala
+        Text(
+            text = if (price != null) "$${price}" else "N/A",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = if (isBelowTarget) targetHitColor else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.scale(scale.value)
+        )
+
+        // Cambio diario en porcentaje
+        if (dailyChangePercent != null) {
+            val sign = if (dailyChangePercent >= BigDecimal.ZERO) "+" else ""
+            Text(
+                text = "$sign${dailyChangePercent}%",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = changeColor,
+                modifier = Modifier.scale(scale.value)
+            )
+        }
+    }
+}
+

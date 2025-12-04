@@ -18,8 +18,8 @@ object RetrofitClient {
     private const val BASE_URL_LOCAL_DEVICE = "http://192.168.1.XXX:8080/"
     
     // Servidor de producción en AWS
-    private const val BASE_URL_PRODUCTION = "http://divtracker-prod.eba-rghuxgtw.eu-west-1.elasticbeanstalk.com/"
-    
+    private const val BASE_URL_PRODUCTION = "http://divtracker-prod.eba-pb38mh5j.eu-west-1.elasticbeanstalk.com/"
+
     // 🔧 Cambia esto según tu entorno actual. 
     // Por defecto usaremos Producción para evitar problemas si no tienes el backend local corriendo.
     private const val BASE_URL = BASE_URL_PRODUCTION 

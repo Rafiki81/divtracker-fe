@@ -47,6 +47,9 @@ fun CreateEditWatchlistScreen(
     var showAdvanced by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Estado para mostrar el diálogo de error
+    var errorDialogMessage by remember { mutableStateOf<String?>(null) }
+
     // Load data if in edit mode
     LaunchedEffect(itemId) {
         if (isEditMode && itemId != null) {
@@ -79,8 +82,23 @@ fun CreateEditWatchlistScreen(
             viewModel.resetOperationState()
             onNavigateBack()
         } else if (operationState is WatchlistOperationState.Error) {
-            snackbarHostState.showSnackbar((operationState as WatchlistOperationState.Error).message)
+            errorDialogMessage = (operationState as WatchlistOperationState.Error).message
+            viewModel.resetOperationState()
         }
+    }
+
+    // Diálogo de error
+    if (errorDialogMessage != null) {
+        AlertDialog(
+            onDismissRequest = { errorDialogMessage = null },
+            title = { Text("Error") },
+            text = { Text(errorDialogMessage!!) },
+            confirmButton = {
+                TextButton(onClick = { errorDialogMessage = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Scaffold(

@@ -1,8 +1,10 @@
 package com.rafiki81.divtracker.ui.ticker
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rafiki81.divtracker.data.api.RetrofitClient
+import com.rafiki81.divtracker.data.local.AppDatabase
 import com.rafiki81.divtracker.data.model.TickerSearchResult
 import com.rafiki81.divtracker.data.repository.WatchlistRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,10 +18,11 @@ sealed class TickerSearchState {
     data class Error(val message: String) : TickerSearchState()
 }
 
-class TickerSearchViewModel : ViewModel() {
-    
-    private val repository = WatchlistRepository(RetrofitClient.watchlistApiService)
-    
+class TickerSearchViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val database = AppDatabase.getDatabase(application)
+    private val repository = WatchlistRepository(RetrofitClient.watchlistApiService, database.watchlistDao())
+
     private val _searchState = MutableStateFlow<TickerSearchState>(TickerSearchState.Idle)
     val searchState: StateFlow<TickerSearchState> = _searchState
     

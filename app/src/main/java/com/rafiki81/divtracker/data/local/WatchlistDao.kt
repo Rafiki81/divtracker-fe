@@ -32,6 +32,20 @@ interface WatchlistDao {
     }
     
     // Para actualizaciones parciales de precios (desde FCM por ejemplo)
-    @Query("UPDATE watchlist_items SET currentPrice = :price WHERE ticker = :ticker")
-    suspend fun updatePrice(ticker: String, price: String)
+    @Query("""
+        UPDATE watchlist_items 
+        SET currentPrice = :currentPrice, 
+            dailyChangePercent = :dailyChangePercent,
+            updatedAt = :updatedAt
+        WHERE UPPER(ticker) = UPPER(:ticker)
+    """)
+    suspend fun updatePriceByTicker(
+        ticker: String,
+        currentPrice: String,
+        dailyChangePercent: String?,
+        updatedAt: String = System.currentTimeMillis().toString()
+    )
+
+    @Query("SELECT * FROM watchlist_items WHERE UPPER(ticker) = UPPER(:ticker) LIMIT 1")
+    suspend fun getByTicker(ticker: String): WatchlistItemEntity?
 }

@@ -69,4 +69,39 @@ class FcmTokenRepository(
             newId
         }
     }
+
+    /**
+     * Registrar token FCM pendiente después del login.
+     * Este método busca si hay un token almacenado localmente y lo envía al backend.
+     */
+    suspend fun registerPendingToken(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val pendingToken = prefs.getString(KEY_FCM_TOKEN, null)
+            if (pendingToken != null) {
+                registerToken(pendingToken)
+                Result.success(Unit)
+            } else {
+                // No hay token pendiente, intentar obtener uno nuevo de Firebase
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Guardar token localmente sin enviar al backend (útil si el usuario no está logueado)
+     */
+    fun savePendingToken(token: String) {
+        prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
+    }
+
+    /**
+     * Limpiar datos locales del dispositivo (para logout)
+     */
+    fun clearLocalData() {
+        prefs.edit()
+            .remove(KEY_FCM_TOKEN)
+            .apply()
+    }
 }

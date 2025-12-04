@@ -1,11 +1,9 @@
 package com.rafiki81.divtracker.service
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -13,6 +11,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.rafiki81.divtracker.MainActivity
 import com.rafiki81.divtracker.R
 import com.rafiki81.divtracker.data.api.RetrofitClient
+import com.rafiki81.divtracker.data.local.AppDatabase
 import com.rafiki81.divtracker.data.repository.FcmTokenRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +22,9 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val repository by lazy { 
         FcmTokenRepository(RetrofitClient.deviceApiService, applicationContext) 
+    }
+    private val watchlistDao by lazy {
+        AppDatabase.getDatabase(applicationContext).watchlistDao()
     }
 
     override fun onNewToken(token: String) {
@@ -78,8 +80,29 @@ class DivTrackerMessagingService : FirebaseMessagingService() {
                 }
             }
             "PRICE_UPDATE" -> {
-                // Silent update - TODO: Implement logic to update local DB/Cache
-                Log.d("FCM", "Silent price update received for ${data["ticker"]}")
+                // Silent update - Actualizar la base de datos local
+                handlePriceUpdate(data)
+            }
+        }
+    }
+
+    private fun handlePriceUpdate(data: Map<String, String>) {
+        val ticker = data["ticker"] ?: return
+        val price = data["price"] ?: return
+        val changePercent = data["changePercent"]
+
+        Log.d("FCM", "Price update for $ticker: $price (${changePercent ?: "N/A"}%)")
+
+        scope.launch {
+            try {
+                watchlistDao.updatePriceByTicker(
+                    ticker = ticker,
+                    currentPrice = price,
+                    dailyChangePercent = changePercent
+                )
+                Log.d("FCM", "Successfully updated price for $ticker in local DB")
+            } catch (e: Exception) {
+                Log.e("FCM", "Error updating price for $ticker: ${e.message}")
             }
         }
     }

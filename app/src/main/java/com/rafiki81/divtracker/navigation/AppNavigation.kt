@@ -71,6 +71,11 @@ fun AppNavigation(startDestination: String = Screen.Login.route) {
                 onNavigateToCreate = {
                     // Navigate to Ticker Search for Quick Add
                     navController.navigate(Screen.TickerSearch.route)
+                },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

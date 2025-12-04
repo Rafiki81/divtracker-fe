@@ -34,6 +34,10 @@ class WatchlistViewModel(application: Application) : AndroidViewModel(applicatio
     private val _operationState = MutableStateFlow<WatchlistOperationState>(WatchlistOperationState.Idle)
     val operationState: StateFlow<WatchlistOperationState> = _operationState.asStateFlow()
     
+    // State para indicar si el refresh de red está en progreso
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     // Configuración actual de ordenamiento
     private var currentSortOption = SortOption.MARGIN_DESC
 
@@ -85,8 +89,14 @@ class WatchlistViewModel(application: Application) : AndroidViewModel(applicatio
                 _listState.value = WatchlistListState.Loading
             }
             
+            _isRefreshing.value = true
+
             repository.refreshWatchlist(page, size, sortBy, direction)
+                .onSuccess {
+                    _isRefreshing.value = false
+                }
                 .onFailure { error ->
+                    _isRefreshing.value = false
                     // Si falla la red pero tenemos datos locales, no mostramos error bloqueante
                     if (_listState.value !is WatchlistListState.Success) {
                         _listState.value = WatchlistListState.Error(
