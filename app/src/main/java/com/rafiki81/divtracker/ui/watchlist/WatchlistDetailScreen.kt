@@ -229,13 +229,13 @@ fun WatchlistDetailScreen(
                         
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                item.dividendGrowthRate5Y?.let { MetricRow("Div Growth (5Y)", formatPercent(it)) }
-                                MetricRow("Coverage Ratio", formatNumber(item.dividendCoverageRatio))
+                                item.dividendGrowthRate5Y?.let { MetricRow("Div Growth 5Y", formatPercent(it)) }
+                                MetricRow("Coverage", formatNumber(item.dividendCoverageRatio))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("Chowder Rule", formatNumber(item.chowderRuleValue))
-                                item.focfCagr5Y?.let { MetricRow("FCF Growth (5Y)", formatPercent(it)) }
+                                MetricRow("Chowder", formatNumber(item.chowderRuleValue))
+                                item.focfCagr5Y?.let { MetricRow("FCF Growth 5Y", formatPercent(it)) }
                             }
                         }
 
@@ -265,11 +265,11 @@ fun WatchlistDetailScreen(
                                 MetricRow("FCF Yield", formatPercent(item.fcfYield))
                                 MetricRow("P/E Ratio", formatNumber(item.peAnnual, 2))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                MetricRow("Fair Price (P/FCF)", formatPrice(item.fairPriceByPfcf))
-                                MetricRow("Discount to Fair", formatPercent(item.discountToFairPrice))
-                                MetricRow("P/FCF (Actual)", formatNumber(item.actualPfcf, 2))
+                                MetricRow("Fair Price", formatPrice(item.fairPriceByPfcf))
+                                MetricRow("Discount", formatPercent(item.discountToFairPrice))
+                                MetricRow("P/FCF", formatNumber(item.actualPfcf, 2))
                             }
                         }
 
@@ -282,7 +282,7 @@ fun WatchlistDetailScreen(
                                 MetricRow("Market Cap", formatMarketCap(item.marketCapitalization))
                                 MetricRow("Beta", formatNumber(item.beta, 2))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 MetricRow("52W High", formatPrice(item.weekHigh52))
                                 MetricRow("52W Low", formatPrice(item.weekLow52))
@@ -377,14 +377,23 @@ fun SectionHeader(title: String) {
 fun MetricRow(label: String, value: String?, highlight: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f, fill = false),
+            maxLines = 1
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = value ?: "N/A", 
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (highlight) FontWeight.Bold else FontWeight.Medium,
-            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1
         )
     }
 }
